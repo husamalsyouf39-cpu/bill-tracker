@@ -5,7 +5,7 @@ import Summary from './components/Summary';
 import TabBar from './components/TabBar';
 import BillList from './components/BillList';
 import AddEditModal from './components/AddEditModal';
-import { sortBillsByDue } from './utils';
+import { sortBillsByDue, getDaysUntil } from './utils';
 
 export default function App() {
   const [bills, setBills] = useState([]);
@@ -66,7 +66,7 @@ export default function App() {
 
   const filteredBills = () => {
     switch (activeTab) {
-      case 'upcoming': return bills.filter(b => b.active !== false);
+      case 'upcoming': return bills.filter(b => b.active !== false && getDaysUntil(b) <= 7);
       case 'notusing': return bills.filter(b => b.wasteful);
       case 'paused': return bills.filter(b => b.active === false);
       default: return bills;
