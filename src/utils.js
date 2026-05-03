@@ -25,26 +25,43 @@ export function getMonthlyAmount(amount, frequency) {
   }
 }
 
-export function getDaysUntil(dueDay) {
+// Accepts a full bill object. Returns days until next due date (0 = due today).
+export function getDaysUntil(bill) {
   const today = new Date();
-  const currentDay = today.getDate();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+  today.setHours(0, 0, 0, 0);
 
-  let dueDate = new Date(currentYear, currentMonth, dueDay);
-
-  if (dueDay < currentDay) {
-    // Due day has passed this month, use next month
-    dueDate = new Date(currentYear, currentMonth + 1, dueDay);
+  if (bill.frequency === 'weekly') {
+    // dueDay: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+    // JS getDay(): 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    const targetJsDay = bill.dueDay === 7 ? 0 : bill.dueDay;
+    const diff = (targetJsDay - today.getDay() + 7) % 7;
+    return diff; // 0 = due today, next occurrence otherwise
   }
 
-  const diff = dueDate.getTime() - today.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (bill.frequency === 'yearly') {
+    // dueMonth is 1-indexed (1=Jan … 12=Dec), dueDay is day of that month
+    const month = (bill.dueMonth || 1) - 1;
+    let due = new Date(today.getFullYear(), month, bill.dueDay);
+    if (due < today) due = new Date(today.getFullYear() + 1, month, bill.dueDay);
+    return Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+  }
+
+  if (bill.frequency === 'quarterly') {
+    // Next occurrence of dueDay in this month; if past, jump 3 months ahead
+    let due = new Date(today.getFullYear(), today.getMonth(), bill.dueDay);
+    if (due < today) due = new Date(today.getFullYear(), today.getMonth() + 3, bill.dueDay);
+    return Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+  }
+
+  // monthly
+  let due = new Date(today.getFullYear(), today.getMonth(), bill.dueDay);
+  if (due < today) due = new Date(today.getFullYear(), today.getMonth() + 1, bill.dueDay);
+  return Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 }
 
 export function getDueStatus(bill) {
   if (!bill.active) return 'paused';
-  const days = getDaysUntil(bill.dueDay);
+  const days = getDaysUntil(bill);
   if (days < 0) return 'overdue';
   if (days <= 3) return 'critical';
   if (days <= 7) return 'soon';
@@ -68,6 +85,6 @@ export function sortBillsByDue(bills) {
   return [...bills].sort((a, b) => {
     if (!a.active && b.active) return 1;
     if (a.active && !b.active) return -1;
-    return getDaysUntil(a.dueDay) - getDaysUntil(b.dueDay);
+    return getDaysUntil(a) - getDaysUntil(b);
   });
 }

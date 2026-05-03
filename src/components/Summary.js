@@ -1,19 +1,21 @@
 import React from 'react';
-import { getMonthlyAmount, formatCurrency } from '../utils';
+import { formatCurrency, getDaysUntil, getMonthlyAmount } from '../utils';
 
 export default function Summary({ bills }) {
   const activeBills = bills.filter(b => b.active !== false);
-  const totalMonthly = activeBills.reduce((sum, b) => sum + getMonthlyAmount(b.amount, b.frequency), 0);
   const wastefulBills = activeBills.filter(b => b.wasteful);
   const wastefulTotal = wastefulBills.reduce((sum, b) => sum + getMonthlyAmount(b.amount, b.frequency), 0);
 
-  const today = new Date();
+  const monthlyTotal = activeBills.filter(b => b.frequency === 'monthly')
+    .reduce((sum, b) => sum + b.amount, 0);
+  const weeklyTotal = activeBills.filter(b => b.frequency === 'weekly')
+    .reduce((sum, b) => sum + b.amount, 0);
+  const yearlyTotal = activeBills.filter(b => b.frequency === 'yearly')
+    .reduce((sum, b) => sum + b.amount, 0);
+
   const dueThisWeek = activeBills.filter(b => {
-    const day = b.dueDay;
-    const end = new Date(today); end.setDate(end.getDate() + 7);
-    const due = new Date(today.getFullYear(), today.getMonth(), day);
-    if (due < today) due.setMonth(due.getMonth() + 1);
-    return due <= end;
+    const days = getDaysUntil(b);
+    return days >= 0 && days <= 7;
   });
 
   return (
@@ -22,13 +24,15 @@ export default function Summary({ bills }) {
       paddingTop: `calc(20px + env(safe-area-inset-top, 0px))`,
       background: 'var(--bg)',
     }}>
-      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 6 }}>
-        Monthly spend
-      </p>
-      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 40, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1, marginBottom: 6 }}>
-        {formatCurrency(totalMonthly)}
-      </p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      {/* Spend totals by frequency */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <SpendCard label="Monthly" amount={monthlyTotal} />
+        <SpendCard label="Weekly" amount={weeklyTotal} />
+        <SpendCard label="Yearly" amount={yearlyTotal} />
+      </div>
+
+      {/* Active count + wasteful callout */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
           {activeBills.length} active bill{activeBills.length !== 1 ? 's' : ''}
         </span>
@@ -53,6 +57,25 @@ export default function Summary({ bills }) {
           valueColor={wastefulBills.length > 0 ? 'var(--status-critical)' : undefined}
         />
       </div>
+    </div>
+  );
+}
+
+function SpendCard({ label, amount }) {
+  return (
+    <div style={{
+      background: 'var(--card)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-sm)',
+      padding: '10px 12px',
+      textAlign: 'center',
+    }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        {label}
+      </p>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1 }}>
+        {formatCurrency(amount)}
+      </p>
     </div>
   );
 }

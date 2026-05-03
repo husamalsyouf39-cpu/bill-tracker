@@ -9,7 +9,7 @@ function DueBadge({ bill }) {
   if (status === 'overdue') {
     return <Badge text="Overdue" bg="rgba(224,85,85,0.15)" color="var(--status-critical)" />;
   }
-  const days = getDaysUntil(bill.dueDay);
+  const days = getDaysUntil(bill);
   if (status === 'critical') {
     return <Badge text={`${days}d left`} bg="rgba(224,85,85,0.15)" color="var(--status-critical)" />;
   }
